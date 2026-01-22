@@ -1,0 +1,42 @@
+import sys
+import cv2
+import numpy as np
+from PySide6.QtWidgets import QApplication, QLabel, QWidget, QVBoxLayout
+from PySide6.QtGui import QImage, QPixmap
+from PySide6.QtCore import QTimer
+
+class CameraWidget(QWidget):
+    def __init__(self):
+        super().__init__()
+
+        # GStreamer pipeline for USB webcam
+        self.cap = cv2.VideoCapture(
+            "v4l2src device=/dev/video0 ! videoconvert ! appsink",
+            cv2.CAP_GSTREAMER
+        )
+
+        self.label = QLabel("Camera Loading…")
+        layout = QVBoxLayout()
+        layout.addWidget(self.label)
+        self.setLayout(layout)
+
+        self.timer = QTimer()
+        self.timer.timeout.connect(self.update_frame)
+        self.timer.start(30)
+
+    def update_frame(self):
+        ret, frame = self.cap.read()
+        if not ret:
+            return
+
+        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        h, w, ch = frame.shape
+        bytes_per_line = ch * w
+        qimg = QImage(frame.data, w, h, bytes_per_line, QImage.Format_RGB888)
+
+        self.label.setPixmap(QPixmap.fromImage(qimg))
+
+app = QApplication(sys.argv)
+widget = CameraWidget()
+widget.show()
+sys.exit(app.exec())
